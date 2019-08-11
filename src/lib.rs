@@ -19,13 +19,56 @@ pub fn send_data(port_name: &str, baud_rate: u32, secs: u64) -> () {
                 &port_name, &baud_rate
             );
             loop {
+                let mut serial_buf: Vec<u8> = vec![0; 1000];
                 match port.write(&data) {
-                    Ok(_) => println!("write data to {} succeed!", &port_name),
+                    Ok(_) => println!("send data: {:?}", data),
                     Err(ref e) if e.kind() == io::ErrorKind::TimedOut => (),
                     Err(e) => println!("{:?}", e),
                 }
+                std::thread::sleep(Duration::from_millis(1000));
+                for _ in 0..20 {
+                    match port.read(serial_buf.as_mut_slice()) {
+                        Ok(t) => io::stdout().write_all(&serial_buf[..t]).unwrap(),
+                        Err(ref e) if e.kind() == io::ErrorKind::TimedOut => (),
+                        Err(e) => eprintln!("{:?}", e),
+                    }
+                    std::thread::sleep(Duration::from_millis(50));
+                }
                 std::thread::sleep(Duration::from_secs(secs));
             }
+        }
+        Err(e) => {
+            println!("Failed to open \"{}\". Error: {}", port_name, e);
+            std::process::exit(1);
+        }
+    }
+}
+
+pub fn get_addr(port_name: &str) {
+    let mut settings: SerialPortSettings = Default::default();
+    settings.timeout = Duration::from_millis(10);
+    settings.baud_rate = 9600;
+
+    let command: &[u8] = &[0xC1, 0x00, 02];
+
+    match serialport::open_with_settings(port_name, &settings) {
+        Ok(mut port) => {
+            println!("Get Device Address: ");
+            let mut serial_buf: Vec<u8> = vec![0; 5];
+            match port.write(&command) {
+                Ok(_) => println!("send data: {:?}", command),
+                Err(ref e) if e.kind() == io::ErrorKind::TimedOut => (),
+                Err(e) => println!("{:?}", e),
+            }
+            std::thread::sleep(Duration::from_millis(100));
+            for _ in 0..20 {
+                match port.read(serial_buf.as_mut_slice()) {
+                    Ok(t) => io::stdout().write_all(&serial_buf[..t]).unwrap(),
+                    Err(ref e) if e.kind() == io::ErrorKind::TimedOut => (),
+                    Err(e) => eprintln!("{:?}", e),
+                }
+            }
+            println!("{:?}", serial_buf);
         }
         Err(e) => {
             println!("Failed to open \"{}\". Error: {}", port_name, e);
