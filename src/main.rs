@@ -4,7 +4,7 @@ fn main() {
     let matches = App::new("Lora sensor simulator")
         .subcommand(
             SubCommand::with_name("send")
-                .about("Send fake data very n seconds")
+                .about("Send data very n seconds")
                 .setting(AppSettings::DisableVersion)
                 .arg(
                     Arg::with_name("port")
@@ -26,6 +26,23 @@ fn main() {
                 ),
         )
         .subcommand(
+            SubCommand::with_name("receive")
+                .about("Receive data")
+                .setting(AppSettings::DisableVersion)
+                .arg(
+                    Arg::with_name("port")
+                        .help("The device path to a serial port")
+                        .use_delimiter(false)
+                        .required(true),
+                )
+                .arg(
+                    Arg::with_name("baud")
+                        .help("The baud rate to connetc at")
+                        .use_delimiter(false)
+                        .required(true),
+                ),
+        )
+        .subcommand(
             SubCommand::with_name("addr")
                 .about("get device loar address")
                 .arg(
@@ -39,7 +56,13 @@ fn main() {
         let port_name = matches.value_of("port").unwrap();
         let baud_rate = matches.value_of("baud").unwrap().parse::<u32>().unwrap();
         let secs = matches.value_of("seconds").unwrap().parse::<u64>().unwrap();
-        lora_sensor_simulator::send_data(port_name, baud_rate, secs);
+        lora_sensor_simulator::send(port_name, baud_rate, secs);
+    }
+
+    if let Some(matches) = matches.subcommand_matches("receive") {
+        let port_name = matches.value_of("port").unwrap();
+        let baud_rate = matches.value_of("baud").unwrap().parse::<u32>().unwrap();
+        lora_sensor_simulator::receive(port_name, baud_rate);
     }
 
     if let Some(matches) = matches.subcommand_matches("addr") {
