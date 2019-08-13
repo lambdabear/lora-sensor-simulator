@@ -28,7 +28,12 @@ pub fn send(port_name: &str, baud_rate: u32, secs: u64) -> () {
                 // std::thread::sleep(Duration::from_millis(10));
                 for _ in 0..40 {
                     match port.read(serial_buf.as_mut_slice()) {
-                        Ok(t) => println!("receive: {:?}", &serial_buf[..t]),
+                        Ok(t) => {
+                            println!("receive: {:?}", &serial_buf[..t - 2]);
+                            let tick: u16 =
+                                u16::from_be_bytes([serial_buf[t - 2], serial_buf[t - 1]]);
+                            println!("timer tick: {}", tick);
+                        }
                         Err(ref e) if e.kind() == io::ErrorKind::TimedOut => (),
                         Err(e) => eprintln!("{:?}", e),
                     }
