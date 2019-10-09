@@ -1,7 +1,12 @@
+use chrono::prelude::*;
 use std::io::{self, Write};
 use std::time::Duration;
 
 use serialport::prelude::*;
+
+pub mod data_frame;
+
+use crate::data_frame::DataFrame;
 
 pub fn send(port_name: &str, baud_rate: u32, secs: u64) -> () {
     let mut settings: SerialPortSettings = Default::default();
@@ -58,15 +63,22 @@ pub fn receive(port_name: &str, baud_rate: u32) -> () {
             loop {
                 match port.read(serial_buf.as_mut_slice()) {
                     Ok(t) => {
-                        println!("{:?}", &serial_buf[..t]);
+                        let mut cache: [u8; 13] = [0; 13];
+                        cache.copy_from_slice(&serial_buf[..13]);
+                        println!(
+                            "{:?} period: {}; {}",
+                            DataFrame::parse(cache).expect("data buffer error"),
+                            u16::from_be_bytes([serial_buf[t - 2], serial_buf[t - 1]]),
+                            Local::now().format("%Y-%m-%d %H:%M:%S").to_string()
+                        );
                         std::thread::sleep(Duration::from_millis(100));
-                        let mut data: Vec<u8> = vec![0x00, 0x01, 0x42];
-                        data.extend_from_slice(&serial_buf[..t]);
-                        match port.write(&data) {
-                            Ok(_) => println!("send data: {:?}", &data),
-                            Err(ref e) if e.kind() == io::ErrorKind::TimedOut => (),
-                            Err(e) => println!("{:?}", e),
-                        }
+                        //let mut data: Vec<u8> = vec![0x00, 0x01, 0x42];
+                        //data.extend_from_slice(&serial_buf[..t]);
+                        //match port.write(&data) {
+                        //    Ok(_) => println!("send data: {:?}", &data),
+                        //    Err(ref e) if e.kind() == io::ErrorKind::TimedOut => (),
+                        //   Err(e) => println!("{:?}", e),
+                        //}
                     }
                     Err(ref e) if e.kind() == io::ErrorKind::TimedOut => (),
                     Err(e) => eprintln!("{:?}", e),
