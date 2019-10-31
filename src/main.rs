@@ -23,6 +23,12 @@ fn main() {
                         .help("The cycle time to send data")
                         .use_delimiter(false)
                         .required(true),
+                )
+                .arg(
+                    Arg::with_name("id")
+                        .help("The id of lora node")
+                        .use_delimiter(false)
+                        .required(true),
                 ),
         )
         .subcommand(
@@ -56,7 +62,8 @@ fn main() {
         let port_name = matches.value_of("port").unwrap();
         let baud_rate = matches.value_of("baud").unwrap().parse::<u32>().unwrap();
         let secs = matches.value_of("seconds").unwrap().parse::<u64>().unwrap();
-        lora_sensor_simulator::send(port_name, baud_rate, secs);
+        let id = matches.value_of("id").unwrap().parse::<u32>().unwrap();
+        lora_sensor_simulator::send(port_name, baud_rate, secs, id);
     }
 
     if let Some(matches) = matches.subcommand_matches("receive") {

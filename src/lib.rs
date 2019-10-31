@@ -1,20 +1,19 @@
 use chrono::prelude::*;
+use serialport::prelude::*;
 use std::io::{self, Write};
 use std::time::Duration;
-
-use serialport::prelude::*;
 
 pub mod data_frame;
 
 use crate::data_frame::DataFrame;
 
-pub fn send(port_name: &str, baud_rate: u32, secs: u64) -> () {
+pub fn send(port_name: &str, baud_rate: u32, secs: u64, id: u32) -> () {
     let mut settings: SerialPortSettings = Default::default();
     settings.timeout = Duration::from_millis(10);
     settings.baud_rate = baud_rate;
-
+    let id = u32::to_be_bytes(id);
     let data: &[u8] = &[
-        0xFF, 0xFE, 0x42, 0xE0, 0x01, 0xAA, 0xAA, 0xAA, 0xAA, 0x01, 0x64, 0x10,
+        0xFF, 0xFE, 0x42, 0xE0, 0x01, id[0], id[1], id[2], id[3], 0x01, 0x64, 0x10,
     ];
 
     match serialport::open_with_settings(&port_name, &settings) {
@@ -31,13 +30,18 @@ pub fn send(port_name: &str, baud_rate: u32, secs: u64) -> () {
                     Err(e) => println!("{:?}", e),
                 }
                 // std::thread::sleep(Duration::from_millis(10));
-                for _ in 0..40 {
+                for _ in 0..30 {
                     match port.read(serial_buf.as_mut_slice()) {
-                        Ok(t) => println!("receive: {:?}", &serial_buf[..t]),
+                        Ok(t) => {
+                            println!("receive: {:?}", &serial_buf[..t - 2]);
+                            let tick: u16 =
+                                u16::from_be_bytes([serial_buf[t - 2], serial_buf[t - 1]]);
+                            println!("timer tick: {}", tick);
+                        }
                         Err(ref e) if e.kind() == io::ErrorKind::TimedOut => (),
                         Err(e) => eprintln!("{:?}", e),
                     }
-                    std::thread::sleep(Duration::from_millis(50));
+                    // std::thread::sleep(Duration::from_millis(50));
                 }
                 std::thread::sleep(Duration::from_secs(secs));
             }
