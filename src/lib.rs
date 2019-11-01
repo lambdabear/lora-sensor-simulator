@@ -1,4 +1,5 @@
 use chrono::prelude::*;
+use rand::{thread_rng, Rng};
 use serialport::prelude::*;
 use std::io::{self, Write};
 use std::time::Duration;
@@ -7,14 +8,11 @@ pub mod data_frame;
 
 use crate::data_frame::DataFrame;
 
-pub fn send(port_name: &str, baud_rate: u32, secs: u64, id: u32) -> () {
+pub fn send(port_name: &str, baud_rate: u32, secs: u64, id: u32, data: f32) -> () {
     let mut settings: SerialPortSettings = Default::default();
     settings.timeout = Duration::from_millis(10);
     settings.baud_rate = baud_rate;
-    let id = u32::to_be_bytes(id);
-    let data: &[u8] = &[
-        0xFF, 0xFE, 0x42, 0xE0, 0x01, id[0], id[1], id[2], id[3], 0x01, 0x64, 0x10,
-    ];
+    let mut rng = thread_rng();
 
     match serialport::open_with_settings(&port_name, &settings) {
         Ok(mut port) => {
@@ -23,9 +21,14 @@ pub fn send(port_name: &str, baud_rate: u32, secs: u64, id: u32) -> () {
                 &port_name, &baud_rate, secs
             );
             loop {
+                let data: f32 = rng.gen_range(0.0, data);
+                let sensor_data = Vec::from(&DataFrame::new(1, id, 1, 100, data).encode()[..]);
+                let mut buffer: Vec<u8> = Vec::new();
+                buffer.extend_from_slice(&[0xFF, 0xFE, 0x42]);
+                buffer.extend_from_slice(&sensor_data[..]);
                 let mut serial_buf: Vec<u8> = vec![0; 1000];
-                match port.write(&data) {
-                    Ok(_) => println!("send data: {:?}", data),
+                match port.write(&buffer) {
+                    Ok(_) => println!("send data: {:?}", buffer),
                     Err(ref e) if e.kind() == io::ErrorKind::TimedOut => (),
                     Err(e) => println!("{:?}", e),
                 }
