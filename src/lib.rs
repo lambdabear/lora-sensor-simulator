@@ -35,11 +35,11 @@ pub fn send(port_name: &str, baud_rate: u32, secs: u64, id: u32, data: f32) -> (
                 // std::thread::sleep(Duration::from_millis(10));
                 for _ in 0..30 {
                     match port.read(serial_buf.as_mut_slice()) {
-                        Ok(t) => {
-                            println!("receive: {:?}", &serial_buf[..t - 2]);
-                            let tick: u16 =
-                                u16::from_be_bytes([serial_buf[t - 2], serial_buf[t - 1]]);
-                            println!("timer tick: {}", tick);
+                        Ok(_t) => {
+                            println!("receive: {:?}", &serial_buf[..]);
+                            // let tick: u16 =
+                            //     u16::from_be_bytes([serial_buf[t - 2], serial_buf[t - 1]]);
+                            // println!("timer tick: {}", tick);
                         }
                         Err(ref e) if e.kind() == io::ErrorKind::TimedOut => (),
                         Err(e) => eprintln!("{:?}", e),
@@ -69,13 +69,13 @@ pub fn receive(port_name: &str, baud_rate: u32) -> () {
             // std::thread::sleep(Duration::from_millis(10));
             loop {
                 match port.read(serial_buf.as_mut_slice()) {
-                    Ok(t) => {
+                    Ok(_t) => {
                         let mut cache: [u8; 13] = [0; 13];
                         cache.copy_from_slice(&serial_buf[..13]);
                         println!(
-                            "{:?} period: {}; {}",
+                            "{:?}; {}",
                             DataFrame::parse(cache).expect("data buffer error"),
-                            u16::from_be_bytes([serial_buf[t - 2], serial_buf[t - 1]]),
+                            // u16::from_be_bytes([serial_buf[t - 2], serial_buf[t - 1]]),
                             Local::now().format("%Y-%m-%d %H:%M:%S").to_string()
                         );
                         std::thread::sleep(Duration::from_millis(100));
