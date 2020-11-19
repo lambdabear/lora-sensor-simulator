@@ -3,12 +3,13 @@ use rand::{thread_rng, Rng};
 use serialport::prelude::*;
 use std::io::{self, Write};
 use std::time::Duration;
+use hex;
 
 pub mod data_frame;
 
 use crate::data_frame::DataFrame;
 
-pub fn send(port_name: &str, baud_rate: u32, secs: u64, id: u32, data: f32) -> () {
+pub fn send(port_name: &str, baud_rate: u32, secs: u64, id: [u8; 4], data: f32) -> () {
     let mut settings: SerialPortSettings = Default::default();
     settings.timeout = Duration::from_millis(10);
     settings.baud_rate = baud_rate;
@@ -32,19 +33,16 @@ pub fn send(port_name: &str, baud_rate: u32, secs: u64, id: u32, data: f32) -> (
                     Err(ref e) if e.kind() == io::ErrorKind::TimedOut => (),
                     Err(e) => println!("{:?}", e),
                 }
-                // std::thread::sleep(Duration::from_millis(10));
+                
                 for _ in 0..30 {
                     match port.read(serial_buf.as_mut_slice()) {
                         Ok(_t) => {
                             println!("receive: {:?}", &serial_buf[..]);
-                            // let tick: u16 =
-                            //     u16::from_be_bytes([serial_buf[t - 2], serial_buf[t - 1]]);
-                            // println!("timer tick: {}", tick);
                         }
                         Err(ref e) if e.kind() == io::ErrorKind::TimedOut => (),
                         Err(e) => eprintln!("{:?}", e),
                     }
-                    // std::thread::sleep(Duration::from_millis(50));
+                   
                 }
                 std::thread::sleep(Duration::from_secs(secs));
             }
@@ -72,20 +70,18 @@ pub fn receive(port_name: &str, baud_rate: u32) -> () {
                     Ok(_t) => {
                         let mut cache: [u8; 13] = [0; 13];
                         cache.copy_from_slice(&serial_buf[..13]);
+                        let data = DataFrame::parse(cache).expect("data buffer error");
                         println!(
-                            "{:?}; {}",
-                            DataFrame::parse(cache).expect("data buffer error"),
-                            // u16::from_be_bytes([serial_buf[t - 2], serial_buf[t - 1]]),
+                            "[ id: {}, frame_type: {}, device_type: {}, battery: {}, data: {} ] {}",
+                            hex::encode(&data.id()),
+                            data.frame_type(),
+                            data.device_type(),
+                            data.battery(),
+                            data.data(),
                             Local::now().format("%Y-%m-%d %H:%M:%S").to_string()
                         );
                         std::thread::sleep(Duration::from_millis(100));
-                        //let mut data: Vec<u8> = vec![0x00, 0x01, 0x42];
-                        //data.extend_from_slice(&serial_buf[..t]);
-                        //match port.write(&data) {
-                        //    Ok(_) => println!("send data: {:?}", &data),
-                        //    Err(ref e) if e.kind() == io::ErrorKind::TimedOut => (),
-                        //   Err(e) => println!("{:?}", e),
-                        //}
+
                     }
                     Err(ref e) if e.kind() == io::ErrorKind::TimedOut => (),
                     Err(e) => eprintln!("{:?}", e),
@@ -95,6 +91,8 @@ pub fn receive(port_name: &str, baud_rate: u32) -> () {
         }
         Err(e) => {
             println!("Failed to open \"{}\". Error: {}", port_name, e);
+
+            std::thread::sleep(Duration::from_secs(3));
             std::process::exit(1);
         }
     }

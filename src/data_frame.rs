@@ -1,14 +1,14 @@
 #[derive(Debug)]
 pub struct DataFrame {
     frame_type: u8,
-    id: u32,
+    id: [u8; 4],
     device_type: u8,
     battery: u8,
     data: f32,
 }
 
 impl DataFrame {
-    pub fn new(frame_type: u8, id: u32, device_type: u8, battery: u8, data: f32) -> Self {
+    pub fn new(frame_type: u8, id: [u8; 4], device_type: u8, battery: u8, data: f32) -> Self {
         DataFrame {
             frame_type,
             id,
@@ -25,7 +25,7 @@ impl DataFrame {
         match header {
             0xE0 if payload.iter().fold(0, |acc, cur| acc ^ cur) == checksum => {
                 let frame_type = payload[0];
-                let id = u32::from_be_bytes([payload[1], payload[2], payload[3], payload[4]]);
+                let id = [payload[1], payload[2], payload[3], payload[4]];
                 let device_type = payload[5];
                 let battery = payload[6];
                 let data = f32::from_bits(u32::from_le_bytes([
@@ -50,7 +50,7 @@ impl DataFrame {
     pub fn encode(&self) -> [u8; 13] {
         let mut buffer = [0_u8; 13];
         let header: u8 = 0xE0;
-        let id = self.id.to_be_bytes();
+        let id = self.id;
         let data = self.data.to_bits().to_le_bytes();
 
         buffer[0] = header;
@@ -72,7 +72,7 @@ impl DataFrame {
         buffer
     }
 
-    pub fn id(&self) -> u32 {
+    pub fn id(&self) -> [u8; 4] {
         self.id
     }
 

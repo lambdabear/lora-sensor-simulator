@@ -11,3 +11,5 @@ clap = "2.33"
 serialport = { version = "3.3", default-features = false }
 chrono = "0.4"
 rand = "0.7"
+hex = "0.4"
+console = "0.13"
